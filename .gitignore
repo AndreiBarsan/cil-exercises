@@ -69,3 +69,4 @@ output
 *.out
 .ipynb_checkpoints
 data/
+out/
