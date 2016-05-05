@@ -3,8 +3,9 @@ Baseline for CIL project on road segmentation.
 This simple baseline consits of a CNN with two convolutional+pooling layers with a soft-max loss
 """
 
+# pylint: disable=missing-docstring, invalid-name, superfluous-parens
 
-
+import datetime
 import gzip
 import os
 import sys
@@ -22,10 +23,10 @@ import tensorflow as tf
 NUM_CHANNELS = 3 # RGB images
 PIXEL_DEPTH = 255
 NUM_LABELS = 2
-TRAINING_SIZE = 20
+TRAINING_SIZE = 50
 VALIDATION_SIZE = 5  # Size of the validation set.
 SEED = 66478  # Set to None for random seed.
-BATCH_SIZE = 16 # 64
+BATCH_SIZE = 5 # 64
 NUM_EPOCHS = 5
 RESTORE_MODEL = False # If True, restore existing model instead of training a new one
 RECORDING_STEP = 1000
@@ -35,7 +36,7 @@ RECORDING_STEP = 1000
 # image size should be an integer multiple of this number!
 IMG_PATCH_SIZE = 16
 
-tf.app.flags.DEFINE_string('train_dir', '/tmp/mnist',
+tf.app.flags.DEFINE_string('train_dir', '/tmp/roads',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 FLAGS = tf.app.flags.FLAGS
@@ -64,11 +65,11 @@ def extract_data(filename, num_images):
         imageid = "satImage_%.3d" % i
         image_filename = filename + imageid + ".png"
         if os.path.isfile(image_filename):
-            print ('Loading ' + image_filename)
+            print('Loading ' + image_filename)
             img = mpimg.imread(image_filename)
             imgs.append(img)
         else:
-            print ('File ' + image_filename + ' does not exist')
+            print('File ' + image_filename + ' does not exist')
 
     num_images = len(imgs)
     IMG_WIDTH = imgs[0].shape[0]
@@ -79,7 +80,7 @@ def extract_data(filename, num_images):
     data = [img_patches[i][j] for i in range(len(img_patches)) for j in range(len(img_patches[i]))]
 
     return numpy.asarray(data)
-        
+
 # Assign a label to a patch v
 def value_to_class(v):
     foreground_threshold = 0.25 # percentage of pixels > 1 required to assign a foreground label to a patch
@@ -97,11 +98,11 @@ def extract_labels(filename, num_images):
         imageid = "satImage_%.3d" % i
         image_filename = filename + imageid + ".png"
         if os.path.isfile(image_filename):
-            print ('Loading ' + image_filename)
+            print('Loading ' + image_filename)
             img = mpimg.imread(image_filename)
             gt_imgs.append(img)
         else:
-            print ('File ' + image_filename + ' does not exist')
+            print('File ' + image_filename + ' does not exist')
 
     num_images = len(gt_imgs)
     gt_patches = [img_crop(gt_imgs[i], IMG_PATCH_SIZE, IMG_PATCH_SIZE) for i in range(num_images)]
@@ -133,7 +134,7 @@ def write_predictions_to_file(predictions, labels, filename):
 def print_predictions(predictions, labels):
     max_labels = numpy.argmax(labels, 1)
     max_predictions = numpy.argmax(predictions, 1)
-    print (str(max_labels) + ' ' + str(max_predictions))
+    print(str(max_labels) + ' ' + str(max_predictions))
 
 # Convert array of labels to an image
 def label_to_img(imgwidth, imgheight, w, h, labels):
@@ -162,7 +163,7 @@ def concatenate_images(img, gt_img):
         cimg = numpy.concatenate((img, gt_img), axis=1)
     else:
         gt_img_3c = numpy.zeros((w, h, 3), dtype=numpy.uint8)
-        gt_img8 = img_float_to_uint8(gt_img)          
+        gt_img8 = img_float_to_uint8(gt_img)
         gt_img_3c[:,:,0] = gt_img8
         gt_img_3c[:,:,1] = gt_img8
         gt_img_3c[:,:,2] = gt_img8
@@ -185,9 +186,9 @@ def make_img_overlay(img, predicted_img):
 
 def main(argv=None):  # pylint: disable=unused-argument
 
-    data_dir = 'training/'
+    data_dir = '../data/roads/training/'
     train_data_filename = data_dir + 'images/'
-    train_labels_filename = data_dir + 'groundtruth/' 
+    train_labels_filename = data_dir + 'groundtruth/'
 
     # Extract it into numpy arrays.
     train_data = extract_data(train_data_filename, TRAINING_SIZE)
@@ -202,15 +203,15 @@ def main(argv=None):  # pylint: disable=unused-argument
             c0 = c0 + 1
         else:
             c1 = c1 + 1
-    print ('Number of data points per class: c0 = ' + str(c0) + ' c1 = ' + str(c1))
+    print('Number of data points per class: c0 = ' + str(c0) + ' c1 = ' + str(c1))
 
-    print ('Balancing training data...')
+    print('Balancing training data...')
     min_c = min(c0, c1)
     idx0 = [i for i, j in enumerate(train_labels) if j[0] == 1]
     idx1 = [i for i, j in enumerate(train_labels) if j[1] == 1]
     new_indices = idx0[0:min_c] + idx1[0:min_c]
-    print (len(new_indices))
-    print (train_data.shape)
+    print(len(new_indices))
+    print(train_data.shape)
     train_data = train_data[new_indices,:,:,:]
     train_labels = train_labels[new_indices]
 
@@ -224,7 +225,7 @@ def main(argv=None):  # pylint: disable=unused-argument
             c0 = c0 + 1
         else:
             c1 = c1 + 1
-    print ('Number of data points per class: c0 = ' + str(c0) + ' c1 = ' + str(c1))
+    print('Number of data points per class: c0 = ' + str(c0) + ' c1 = ' + str(c1))
 
 
     # This is where training samples and labels are fed to the graph.
@@ -274,7 +275,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         V = tf.transpose(V, (2, 0, 1))
         V = tf.reshape(V, (-1, img_w, img_h, 1))
         return V
-    
+
     # Make an image summary for 3d tensor image with index idx
     def get_image_summary_3d(img):
         V = tf.slice(img, (0, 0, 0), (1, -1, -1))
@@ -285,7 +286,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         V = tf.reshape(V, (-1, img_w, img_h, 1))
         return V
 
-    # Get prediction for given input image 
+    # Get prediction for given input image
     def get_prediction(img):
         data = numpy.asarray(img_crop(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE))
         data_node = tf.constant(data)
@@ -340,14 +341,14 @@ def main(argv=None):  # pylint: disable=unused-argument
                               padding='SAME')
 
         conv2 = tf.nn.conv2d(pool,
-                            conv2_weights,
-                            strides=[1, 1, 1, 1],
-                            padding='SAME')
+                             conv2_weights,
+                             strides=[1, 1, 1, 1],
+                             padding='SAME')
         relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_biases))
         pool2 = tf.nn.max_pool(relu2,
-                              ksize=[1, 2, 2, 1],
-                              strides=[1, 2, 2, 1],
-                              padding='SAME')
+                               ksize=[1, 2, 2, 1],
+                               strides=[1, 2, 2, 1],
+                               padding='SAME')
 
         # Uncomment these lines to check the size of each layer
         # print 'data ' + str(data.get_shape())
@@ -363,9 +364,11 @@ def main(argv=None):  # pylint: disable=unused-argument
         reshape = tf.reshape(
             pool2,
             [pool_shape[0], pool_shape[1] * pool_shape[2] * pool_shape[3]])
+
         # Fully connected layer. Note that the '+' operation automatically
         # broadcasts the biases.
         hidden = tf.nn.relu(tf.matmul(reshape, fc1_weights) + fc1_biases)
+
         # Add a 50% dropout during training only. Dropout also scales
         # activations such that no rescaling is needed at evaluation time.
         #if train:
@@ -394,15 +397,19 @@ def main(argv=None):  # pylint: disable=unused-argument
         logits, train_labels_node))
     tf.scalar_summary('loss', loss)
 
-    all_params_node = [conv1_weights, conv1_biases, conv2_weights, conv2_biases, fc1_weights, fc1_biases, fc2_weights, fc2_biases]
-    all_params_names = ['conv1_weights', 'conv1_biases', 'conv2_weights', 'conv2_biases', 'fc1_weights', 'fc1_biases', 'fc2_weights', 'fc2_biases']
+    all_params_node = [conv1_weights, conv1_biases, conv2_weights,
+                       conv2_biases, fc1_weights, fc1_biases,
+                       fc2_weights, fc2_biases]
+    all_params_names = ['conv1_weights', 'conv1_biases', 'conv2_weights',
+                        'conv2_biases', 'fc1_weights', 'fc1_biases',
+                        'fc2_weights', 'fc2_biases']
     all_grads_node = tf.gradients(loss, all_params_node)
     all_grad_norms_node = []
     for i in range(0, len(all_grads_node)):
         norm_grad_i = tf.global_norm([all_grads_node[i]])
         all_grad_norms_node.append(norm_grad_i)
         tf.scalar_summary(all_params_names[i], norm_grad_i)
-    
+
     # L2 regularization for the fully connected parameters.
     regularizers = (tf.nn.l2_loss(fc1_weights) + tf.nn.l2_loss(fc1_biases) +
                     tf.nn.l2_loss(fc2_weights) + tf.nn.l2_loss(fc2_biases))
@@ -420,7 +427,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         0.95,                # Decay rate.
         staircase=True)
     tf.scalar_summary('learning_rate', learning_rate)
-    
+
     # Use simple momentum for the optimization.
     optimizer = tf.train.MomentumOptimizer(learning_rate,
                                            0.0).minimize(loss,
@@ -436,8 +443,6 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     # Create a local session to run this computation.
     with tf.Session() as s:
-
-
         if RESTORE_MODEL:
             # Restore variables from disk.
             saver.restore(s, FLAGS.train_dir + "/model.ckpt")
@@ -449,11 +454,14 @@ def main(argv=None):  # pylint: disable=unused-argument
 
             # Build the summary operation based on the TF collection of Summaries.
             summary_op = tf.merge_all_summaries()
+            summary_dir = "{0}/roads_{1}".format(
+                FLAGS.train_dir,
+                datetime.datetime.now().strftime("%s"))
             summary_writer = tf.train.SummaryWriter(FLAGS.train_dir,
                                                     graph_def=s.graph_def)
-            print ('Initialized!')
+            print('Initialized!')
             # Loop through training steps.
-            print ('Total number of iterations = ' + str(int(num_epochs * train_size / BATCH_SIZE)))
+            print('Total number of iterations = ' + str(int(num_epochs * train_size / BATCH_SIZE)))
 
             training_indices = range(train_size)
 
@@ -462,7 +470,7 @@ def main(argv=None):  # pylint: disable=unused-argument
                 # Permute training indices
                 perm_indices = numpy.random.permutation(training_indices)
 
-                for step in range (int(train_size / BATCH_SIZE)):
+                for step in range(int(train_size / BATCH_SIZE)):
 
                     offset = (step * BATCH_SIZE) % (train_size - BATCH_SIZE)
                     batch_indices = perm_indices[offset:(offset + BATCH_SIZE)]
@@ -487,9 +495,9 @@ def main(argv=None):  # pylint: disable=unused-argument
 
                         # print_predictions(predictions, batch_labels)
 
-                        print ('Epoch %.2f' % (float(step) * BATCH_SIZE / train_size))
-                        print ('Minibatch loss: %.3f, learning rate: %.6f' % (l, lr))
-                        print ('Minibatch error: %.1f%%' % error_rate(predictions,
+                        print('Epoch %.2f' % (float(step) * BATCH_SIZE / train_size))
+                        print('Minibatch loss: %.3f, learning rate: %.6f' % (l, lr))
+                        print('Minibatch error: %.1f%%' % error_rate(predictions,
                                                                      batch_labels))
 
                         sys.stdout.flush()
@@ -504,15 +512,16 @@ def main(argv=None):  # pylint: disable=unused-argument
                 print("Model saved in file: %s" % save_path)
 
 
-        print ("Running prediction on training set")
+        print("Running prediction on training set")
         prediction_training_dir = "predictions_training/"
         if not os.path.isdir(prediction_training_dir):
             os.mkdir(prediction_training_dir)
+
         for i in range(1, TRAINING_SIZE+1):
             pimg = get_prediction_with_groundtruth(train_data_filename, i)
             Image.fromarray(pimg).save(prediction_training_dir + "prediction_" + str(i) + ".png")
             oimg = get_prediction_with_overlay(train_data_filename, i)
-            oimg.save(prediction_training_dir + "overlay_" + str(i) + ".png")       
+            oimg.save(prediction_training_dir + "overlay_" + str(i) + ".png")
 
 if __name__ == '__main__':
     tf.app.run()
